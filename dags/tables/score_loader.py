@@ -1,0 +1,212 @@
+from logging import Logger
+from typing import List, Tuple, Any
+from datetime import datetime
+from clickhouse_driver import Client as ClickhouseClient
+from pydantic import BaseModel
+from lib.pg_connect import PgConnect
+from lib.ch_connect import CHConnect
+
+
+class BookRating(BaseModel):
+    """
+    Data model representing a user's rating for a book.
+
+    Attributes:
+        userid: ID of the user who rated the book
+        bookid: ID of the rated book
+        version: Action number (for incremental loading)
+        score: Numeric rating score (e.g., 0-5 stars)
+        createts: Timestamp of when the rating was last created
+    """
+
+    userid: int
+    bookid: int
+    version: int
+    score: int
+    createts: datetime
+
+    @classmethod
+    def from_dict(cls, data: Tuple[Any]) -> "BookRating":
+        """
+        Create BookRating from database tuple.
+
+        Args:
+            data: Tuple containing (userid, bookid, version, score, createts)
+
+        Returns:
+            BookRating: Validated book rating object
+        """
+        return cls(
+            userid=data[0],
+            bookid=data[1],
+            version=data[2],
+            score=data[3],
+            createts=data[4],
+        )
+
+
+class BookRatingRepository:
+    """
+    Repository for retrieving book rating data from PostgreSQL.
+    Handles batched fetching with incremental loading support.
+    """
+
+    def __init__(self, pg: PgConnect) -> None:
+        """
+        Initialize with PostgreSQL connection.
+
+        Args:
+            pg: Configured PostgreSQL connection wrapper
+        """
+        self._db = pg
+        
+    def get_max_version(self) -> int:
+        """
+        Get the maximum version of the book rating table.
+
+        Returns:
+            int: Maximum version
+        """
+        with self._db.client().cursor() as cur:
+            cur.execute(
+                """
+                SELECT MAX(version) 
+                FROM score
+                """
+            )
+            result = cur.fetchone()
+            return result[0] if result else -1
+
+    def list_book_ratings(
+        self, threshold: int, target: int, batch_size: int = 10000
+    ) -> List[BookRating]:
+        """
+        Get batch of book ratings updated after threshold.
+
+        Args:
+            threshold: Minimum version to include
+            batch_size: Number of records per batch (default: 10,000)
+            offset: Pagination offset
+
+        Returns:
+            List[BookRating]: Batch of book rating objects
+        """
+        with self._db.client().cursor() as cur:
+            cur.execute(
+                """
+                SELECT userid, bookid, version, score, createts
+                FROM score
+                WHERE version > %(threshold)s AND version <= %(target)s
+                ORDER BY version ASC
+                LIMIT %(batch_size)s
+                """,
+                {"threshold": threshold, "target": target, "batch_size": batch_size},
+            )
+            rows = cur.fetchall()
+        return [BookRating.from_dict(row) for row in rows]
+
+
+class BookRatingDestRepository:
+    """
+    Repository for loading book rating data into ClickHouse.
+    Optimized for efficient batch inserts.
+    """
+
+    def insert_batch(self, conn: ClickhouseClient, ratings: List[BookRating]) -> None:
+        """
+        Insert batch of book ratings into ClickHouse.
+
+        Args:
+            conn: Active ClickHouse connection
+            ratings: List of book rating objects to insert
+
+        Note:
+            Silently returns if input list is empty
+        """
+        if not ratings:
+            return
+
+        # Convert to ClickHouse-compatible format
+        data = [
+            [
+                rating.userid,
+                rating.bookid,
+                rating.version,
+                rating.score,
+                rating.createts,
+            ]
+            for rating in ratings
+        ]
+
+        conn.execute(
+            """
+            INSERT INTO Score (userid, bookid, version, score, createts) VALUES
+            """,
+            data,
+        )
+
+
+class BookRatingLoader:
+    """
+    Orchestrates the complete ETL process for book rating data.
+    Implements incremental loading with progress tracking.
+    """
+
+    BATCH_SIZE = 10000  # Optimal batch size for bulk operations
+
+    def __init__(self, pg_origin: PgConnect, ch_dest: CHConnect, log: Logger) -> None:
+        """
+        Initialize loader with connections and logger.
+
+        Args:
+            pg_origin: Source PostgreSQL connection
+            ch_dest: Target ClickHouse connection
+            log: Logger instance for progress tracking
+        """
+        self.ch_dest = ch_dest
+        self.origin = BookRatingRepository(pg_origin)
+        self.stg = BookRatingDestRepository()
+        self.log = log
+
+    def load_book_ratings(self) -> None:
+        """
+        Execute complete loading process:
+        1. Gets last version from target
+        2. Fetches batches from source updated since last load
+        3. Inserts batches into target
+        4. Repeats until all updates processed
+        5. Logs progress and completion
+        """
+        with self.ch_dest.connection() as conn:
+            # Get most recent update from target
+            last_version = conn.execute("SELECT MAX(version) FROM Score")[0][0]
+            if not last_version:
+                last_version = -1  # Initial load marker
+
+            target_version = self.origin.get_max_version()
+
+            if target_version <= last_version:
+                self.log.info("No new book ratings to load")
+                return
+
+            total_loaded = 0
+            batch_num = 1
+
+            # Process batches until completion
+            while last_version != target_version:
+                batch = self.origin.list_book_ratings(last_version, target_version, self.BATCH_SIZE)
+                self.log.info(f"Batch {batch_num}: {len(batch)} ratings to load")
+                if not batch:
+                    break
+
+                self.stg.insert_batch(conn, batch)
+
+                # Update counters for next batch
+                total_loaded += len(batch)
+                last_version = batch[-1].version
+                batch_num += 1
+
+            # Optimize table
+            conn.execute("OPTIMIZE TABLE Score FINAL")
+
+            self.log.info(f"Load complete. Total book ratings loaded: {total_loaded}")

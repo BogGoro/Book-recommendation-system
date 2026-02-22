@@ -1,0 +1,177 @@
+from logging import Logger
+from typing import List, Tuple, Any
+from datetime import datetime
+from clickhouse_driver import Client as ClickhouseClient
+from pydantic import BaseModel
+from lib.pg_connect import PgConnect
+from lib.ch_connect import CHConnect
+
+
+class BookTag(BaseModel):
+    """
+    Data model representing a book tag with validation.
+
+    Attributes:
+        id: Unique identifier for the tag
+        name: Name of the tag (e.g., "bestseller", "classic")
+        createts: Timestamp of creation
+    """
+
+    id: int
+    name: str
+    createts: datetime
+
+    @classmethod
+    def from_dict(cls, data: Tuple[Any]) -> "BookTag":
+        """
+        Create BookTag from database tuple.
+
+        Args:
+            data: Tuple containing (id, name, createts)
+
+        Returns:
+            BookTag: Validated tag object
+        """
+        return cls(id=data[0], name=data[1], createts=data[2])
+
+
+class BookTagRepository:
+    """
+    Repository for retrieving book tag data from PostgreSQL.
+    Handles batched fetching with incremental loading support.
+    """
+
+    def __init__(self, pg: PgConnect) -> None:
+        """
+        Initialize with PostgreSQL connection.
+
+        Args:
+            pg: Configured PostgreSQL connection wrapper
+        """
+        self._db = pg
+
+    def list_book_tags(
+        self, threshold: datetime, batch_size: int = 10000, offset: int = 0
+    ) -> List[BookTag]:
+        """
+        Get batch of book tags updated after threshold.
+
+        Args:
+            threshold: Minimum update timestamp to include
+            batch_size: Number of records per batch (default: 10,000)
+            offset: Pagination offset
+
+        Returns:
+            List[BookTag]: Batch of tag objects
+        """
+        with self._db.client().cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, createts
+                FROM tag
+                WHERE createts > %(threshold)s
+                ORDER BY createts ASC, id ASC
+                LIMIT %(batch_size)s
+                OFFSET %(offset)s
+                """,
+                {"threshold": threshold, "batch_size": batch_size, "offset": offset},
+            )
+            rows = cur.fetchall()
+        return [BookTag.from_dict(row) for row in rows]
+
+
+class BookTagDestRepository:
+    """
+    Repository for loading book tag data into ClickHouse.
+    Optimized for efficient batch inserts.
+    """
+
+    def insert_batch(self, conn: ClickhouseClient, tags: List[BookTag]) -> None:
+        """
+        Insert batch of tags into ClickHouse.
+
+        Args:
+            conn: Active ClickHouse connection
+            tags: List of tag objects to insert
+
+        Note:
+            Silently returns if input list is empty
+        """
+        if not tags:
+            return
+
+        # Convert to ClickHouse-compatible format
+        data = [[tag.id, tag.name, tag.createts] for tag in tags]
+
+        conn.execute(
+            """
+            INSERT INTO Tag (id, name, createts) VALUES
+            """,
+            data,
+        )
+
+
+class BookTagLoader:
+    """
+    Orchestrates the complete ETL process for book tag data.
+    Implements incremental loading with progress tracking.
+    """
+
+    BATCH_SIZE = 10000  # Optimal batch size for bulk operations
+
+    def __init__(self, pg_origin: PgConnect, ch_dest: CHConnect, log: Logger) -> None:
+        """
+        Initialize loader with connections and logger.
+
+        Args:
+            pg_origin: Source PostgreSQL connection
+            ch_dest: Target ClickHouse connection
+            log: Logger instance for progress tracking
+        """
+        self.ch_dest = ch_dest
+        self.origin = BookTagRepository(pg_origin)
+        self.stg = BookTagDestRepository()
+        self.log = log
+
+    def load_book_tags(self) -> None:
+        """
+        Execute complete loading process:
+        1. Gets last loaded timestamp from target
+        2. Fetches batches from source updated since last load
+        3. Inserts batches into target
+        4. Repeats until all updates processed
+        5. Logs progress and completion
+        """
+        with self.ch_dest.connection() as conn:
+            # Get most recent update from target
+            last_loaded = conn.execute("SELECT MAX(createts) FROM Tag")[0][0]
+            if not last_loaded:
+                last_loaded = datetime(1970, 1, 1)  # Initial load marker
+
+            offset = 0
+            total_loaded = 0
+            batch_num = 1
+
+            # Fetch initial batch
+            batch = self.origin.list_book_tags(last_loaded, self.BATCH_SIZE, offset)
+            self.log.info(f"Batch {batch_num}: {len(batch)} tags to load")
+
+            if not batch:
+                self.log.info("No new book tags to load")
+                return
+
+            # Process batches until completion
+            while batch:
+                self.stg.insert_batch(conn, batch)
+
+                # Update counters and get next batch
+                offset += self.BATCH_SIZE
+                total_loaded += len(batch)
+                batch = self.origin.list_book_tags(last_loaded, self.BATCH_SIZE, offset)
+                batch_num += 1
+                self.log.info(f"Batch {batch_num}: {len(batch)} tags to load")
+
+            # Optimize table
+            conn.execute("OPTIMIZE TABLE Tag FINAL")
+
+            self.log.info(f"Load complete. Total book tags loaded: {total_loaded}")
