@@ -41,7 +41,7 @@ CREATE TABLE TYPE (
 CREATE TABLE Score (
     userID INT NOT NULL,
     bookID INT NOT NULL,
-    version INT NOT NULL,
+    version SERIAL NOT NULL,
     score INT NOT NULL, -- Rating score (0-5), 0 = not rated
     createts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (userID, bookID, version),
@@ -56,7 +56,7 @@ CREATE TABLE Score (
 CREATE TABLE BookStatus (
     userID INT NOT NULL,
     bookID INT NOT NULL,
-    version INT NOT NULL,
+    version SERIAL NOT NULL,
     status VARCHAR(20) NOT NULL,
     createts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (userID, bookID, version),
