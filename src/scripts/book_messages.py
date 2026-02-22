@@ -12,10 +12,12 @@ class BookMessages:
                 """
                     SELECT
                         u.username,
-                        m.message
+                        m.message,
+                        m.id,
+                        m.status
                     FROM message m
                     INNER JOIN "User" u ON m.userid = u.id
-                    WHERE m.bookid = %(bookid)s
+                    WHERE m.bookid = %(bookid)s AND m.status <> 'deleted' 
                     ORDER BY m.id DESC
                     OFFSET %(page)s * 10 LIMIT 10
                 """,
@@ -30,7 +32,7 @@ class BookMessages:
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
-                    SELECT COUNT(*) FROM message WHERE bookid = %(bookid)s
+                    SELECT COUNT(*) FROM message WHERE bookid = %(bookid)s AND m.status <> 'deleted'
                 """,
                 {"bookid": self.book_id},
             )

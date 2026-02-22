@@ -25,7 +25,7 @@ class BookStats:
                     SUM(CASE WHEN score = 5 THEN 1 ELSE 0 END) AS five_score,
                     AVG(score) AS avg_score
                 FROM score
-                WHERE bookid = %(bookid)s AND isactual = true
+                WHERE bookid = %(bookid)s AND score <> 0
                 """,
                 {"bookid": self.bookId},
             )
@@ -44,28 +44,13 @@ class BookStats:
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
-                WITH statuses AS (
-                    SELECT
-                        'completed' AS status
-                    FROM completed
-                    WHERE bookid = %(bookid)s AND isactual = true
-                    UNION ALL
-                    SELECT
-                        'reading' AS status
-                    FROM reading
-                    WHERE bookid = %(bookid)s AND isactual = true
-                    UNION ALL
-                    SELECT
-                        'planned' AS status
-                    FROM planned
-                    WHERE bookid = %(bookid)s AND isactual = true
-                )
                 SELECT
                     COUNT(*) AS total,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
                     SUM(CASE WHEN status = 'reading' THEN 1 ELSE 0 END) AS reading,
                     SUM(CASE WHEN status = 'planned' THEN 1 ELSE 0 END) AS planned
-                FROM statuses
+                FROM bookstatus
+                WHERE bookid = %(bookid)s AND status <> 'deleted'
                 """,
                 {"bookid": self.bookId},
             )

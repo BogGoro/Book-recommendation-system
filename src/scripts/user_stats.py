@@ -40,7 +40,7 @@ class UserStats:
                     SUM(CASE WHEN score = 4 THEN 1 ELSE 0 END) AS four_score,
                     SUM(CASE WHEN score = 5 THEN 1 ELSE 0 END) AS five_score
                 FROM score
-                WHERE userid = %(userid)s AND isactual = true
+                WHERE userid = %(userid)s AND score <> 0
                 """,
                 {"userid": self.userid},
             )
@@ -53,28 +53,13 @@ class UserStats:
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
-                WITH statuses AS (
-                    SELECT
-                        'completed' AS status
-                    FROM completed
-                    WHERE userid = %(userid)s AND isactual = true
-                    UNION ALL
-                    SELECT
-                        'reading' AS status
-                    FROM reading
-                    WHERE userid = %(userid)s AND isactual = true
-                    UNION ALL
-                    SELECT
-                        'planned' AS status
-                    FROM planned
-                    WHERE userid = %(userid)s AND isactual = true
-                )
                 SELECT
                     COUNT(*) AS total,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
                     SUM(CASE WHEN status = 'reading' THEN 1 ELSE 0 END) AS reading,
                     SUM(CASE WHEN status = 'planned' THEN 1 ELSE 0 END) AS planned
-                FROM statuses
+                FROM bookstatus
+                WHERE userid = %(userid)s AND status <> 'deleted'
                 """,
                 {"userid": self.userid},
             )

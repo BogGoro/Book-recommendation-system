@@ -33,7 +33,7 @@ class Score:
     def get_score(self) -> int | None:
         with self._db.client().cursor() as cur:
             cur.execute(
-                "SELECT score FROM score WHERE userid = %(userid)s AND bookid = %(bookid)s AND isactual = true",
+                "SELECT score FROM score WHERE userid = %(userid)s AND bookid = %(bookid)s AND score <> 0",
                 {"userid": self.userid, "bookid": self.bookId},
             )
 
@@ -43,10 +43,10 @@ class Score:
 
             return res[0]
 
-    def get_drop_score(self) -> int | None:
+    def get_any_score(self) -> int | None:
         with self._db.client().cursor() as cur:
             cur.execute(
-                "SELECT score FROM score WHERE userid = %(userid)s AND bookid = %(bookid)s AND isactual = false",
+                "SELECT score FROM score WHERE userid = %(userid)s AND bookid = %(bookid)s",
                 {"userid": self.userid, "bookid": self.bookId},
             )
 
@@ -57,23 +57,18 @@ class Score:
             return res[0]
 
     def set_score(self) -> None:
-        if self.get_score():
+        if self.get_any_score():
             client = self._db.client()
             with client.cursor() as cur:
                 cur.execute(
-                    "UPDATE score SET score = %(score)s, updatets = NOW() WHERE userid = %(userid)s AND bookid = %(bookid)s",
+                    "DELETE FROM score WHERE userid = %(userid)s AND bookid = %(bookid)s",
                     {
                         "userid": self.userid,
                         "bookid": self.bookId,
-                        "score": self.newscore,
                     },
                 )
-                client.commit()
-        elif self.get_drop_score():
-            client = self._db.client()
-            with client.cursor() as cur:
                 cur.execute(
-                    "UPDATE score SET score = %(score)s, isactual = true, updatets = NOW() WHERE userid = %(userid)s AND bookid = %(bookid)s",
+                    "INSERT INTO score (userid, bookid, score) VALUES (%(userid)s, %(bookid)s, %(score)s)",
                     {
                         "userid": self.userid,
                         "bookid": self.bookId,
@@ -98,7 +93,17 @@ class Score:
         client = self._db.client()
         with client.cursor() as cur:
             cur.execute(
-                "UPDATE score SET isactual = false WHERE userid = %(userid)s AND bookid = %(bookid)s",
-                {"userid": self.userid, "bookid": self.bookId},
+                "DELETE FROM score WHERE userid = %(userid)s AND bookid = %(bookid)s",
+                {
+                    "userid": self.userid,
+                    "bookid": self.bookId,
+                },
+            )
+            cur.execute(
+                "INSERT INTO score (userid, bookid, score) VALUES (%(userid)s, %(bookid)s, 0)",
+                {
+                    "userid": self.userid,
+                    "bookid": self.bookId,
+                },
             )
             client.commit()
