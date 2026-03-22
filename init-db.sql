@@ -2,6 +2,8 @@
 CREATE TABLE "User" (
     ID SERIAL PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL, -- Unique username for login/display
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
     createts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

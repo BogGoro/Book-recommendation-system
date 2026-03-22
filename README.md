@@ -15,7 +15,8 @@
 
 **Deployment Guide**:
 
-- The official Keycloak and LDAP containers are run simultaneously via Docker using official guides, and are manually synchronized via user interfaces.
+- Authentication uses JWT access and refresh tokens issued by the backend; user passwords are stored as bcrypt hashes in PostgreSQL. Set `JWT_SECRET_KEY` and related variables in `.env` (see `.env.example`).
+- If you upgrade an older database that lacks `password_hash` / `email` on `"User"`, run `migrations/add_user_auth_columns.sql` and backfill passwords before enforcing `NOT NULL`.
 - Before starting all other components rename file .env.example to .env
 - All other components may be built via one of the following orchestrators: docker/kubernetes. For docker-compose orchestration use ```docker compose up --build -d tester``` 
 
@@ -28,7 +29,6 @@
 |-------------|--------------------------------|-------------------------------|-------------------|
 | Local       | Web UI                         | http://localhost:8000         | -                 |
 | Local       | Airflow                        | http://localhost:8080         | admin/admin       |
-| Local       | Keycloak                       | http://localhost:8081         | admin/admin       |
 | Local       | Postgres (backend)             | http://localhost:5432         | admin/admin       |
 | Local       | Postgres (airflow)             | http://localhost:5433         | admin/admin       |
 | Local       | Clickhouse   (HTTP connection) | http://localhost:8124         | admin/admin       |
@@ -41,7 +41,7 @@
 |---------------------|--------------------------|
 | Backend             | FastAPI                  |
 | Frontend            | Jinja2 + HTML + CSS + JS |
-| Auth                | Keycloak + LDAP          |
+| Auth                | JWT + PostgreSQL         |
 | Orchestration       | Airflow                  |
 | Transactional DB    | PostgreSQL               |
 | Analytical DB       | ClickHouse               |
