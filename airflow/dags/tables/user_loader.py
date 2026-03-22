@@ -144,7 +144,7 @@ class UserLoader:
         """
         with self.ch_dest.connection() as conn:
             # Get most recent update from target
-            last_loaded = conn.execute("SELECT MAX(createts) FROM User")[0][0]
+            last_loaded = conn.execute('SELECT MAX(createts) FROM User')[0][0]
             if not last_loaded:
                 last_loaded = datetime(1970, 1, 1)  # Initial load marker
 

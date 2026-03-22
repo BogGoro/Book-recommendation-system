@@ -1,5 +1,5 @@
 -- Core User Table
-CREATE TABLE IF NOT EXISTS user (
+CREATE TABLE IF NOT EXISTS User (
     id UInt32,
     username String,
     createts DateTime DEFAULT now(),

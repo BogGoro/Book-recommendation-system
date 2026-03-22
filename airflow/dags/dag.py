@@ -10,7 +10,7 @@ from tables.type_loader import BookTypeLoader
 from tables.genre_loader import GenreLoader
 from tables.tag_loader import BookTagLoader
 from tables.score_loader import BookRatingLoader
-from dags.tables.bookstatus_loader import BookStatusesLoader
+from tables.bookstatus_loader import BookStatusesLoader
 from tables.message_loader import MessageLoader
 from tables.bookgenre_loader import BookGenreLoader
 from tables.booktag_loader import BookTagLoader

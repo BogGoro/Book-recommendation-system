@@ -194,7 +194,7 @@ class MessageLoader:
 
             target_version = self.origin.get_max_version()
 
-            if target_version <= last_loaded:
+            if not target_version or target_version <= last_loaded:
                 self.log.info("No new messages to load")
                 return
 
@@ -207,7 +207,7 @@ class MessageLoader:
                 self.log.info(f"Batch {batch_num}: {len(batch)} messages to load")
                 if not batch:
                     break
-                
+
                 self.stg.insert_batch(conn, batch)
 
                 # Update counters for next batch

@@ -185,7 +185,7 @@ class BookRatingLoader:
 
             target_version = self.origin.get_max_version()
 
-            if target_version <= last_version:
+            if not target_version or target_version <= last_version:
                 self.log.info("No new book ratings to load")
                 return
 
