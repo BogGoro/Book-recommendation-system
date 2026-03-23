@@ -249,7 +249,7 @@ FROM
     scores s
     JOIN user_maxima um ON s.userid = um.userid;
 
--- analysis
+-- analysis (will be updated via atomic swap)
 CREATE TABLE IF NOT EXISTS PersonalPart (
     userid UInt32,
     bookid UInt32,
@@ -258,31 +258,6 @@ CREATE TABLE IF NOT EXISTS PersonalPart (
 ) ENGINE = ReplacingMergeTree(createts)
 ORDER BY
     (userid, bookid);
-
-CREATE MATERIALIZED VIEW IF NOT EXISTS PersonalPart_MV REFRESH EVERY 10 minutes REPLACE PersonalPart AS
-SELECT
-    u.id AS userid,
-    b.id AS bookid,
-    -- Combined compatibility score calculation
-    (
-        COALESCE(AVG(ts.score), 0) * COALESCE(AVG(ts.votes), 0) + COALESCE(AVG(gs.score), 0) * COALESCE(AVG(gs.votes), 0) + COALESCE(AVG(tgs.score), 0) * COALESCE(AVG(tgs.votes), 0)
-    ) / 3 AS compatibility,
-    now() AS createts
-FROM
-    User u
-    CROSS JOIN Book b -- Consider all possible user-book combinations
-    LEFT JOIN BookType bt ON b.id = bt.bookid
-    LEFT JOIN BookGenre bg ON b.id = bg.bookid
-    LEFT JOIN BookTag btg ON b.id = btg.bookid
-    LEFT JOIN TypeScore ts ON u.id = ts.userid
-    AND bt.typeid = ts.typeid
-    LEFT JOIN GenreScore gs ON u.id = gs.userid
-    AND bg.genreid = gs.genreid
-    LEFT JOIN TagScore tgs ON u.id = tgs.userid
-    AND btg.tagid = tgs.tagid
-GROUP BY
-    u.id,
-    b.id;
 
 CREATE TABLE IF NOT EXISTS Top (
     bookid UInt32,
@@ -293,59 +268,6 @@ CREATE TABLE IF NOT EXISTS Top (
 ORDER BY
     (bookid);
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS Top_MV REFRESH EVERY 10 minutes REPLACE Top AS WITH scores AS (
-    SELECT
-        b.id AS bookid,
-        AVG(s.score) AS score,
-        COUNT(s.score) AS votes
-    FROM
-        Book b
-        LEFT JOIN Score s ON b.id = s.bookid
-        AND s.score > 0
-    GROUP BY
-        b.id
-),
-normalized AS (
-    SELECT
-        s.bookid,
-        COALESCE(
-            s.score / NULLIF(
-                (
-                    SELECT
-                        MAX(s.score) AS score
-                    FROM
-                        scores s
-                ),
-                0
-            ),
-            0
-        ) AS normscore,
-        COALESCE(
-            s.votes :: FLOAT / NULLIF(
-                (
-                    SELECT
-                        MAX(s.votes) AS votes
-                    FROM
-                        scores s
-                ),
-                0
-            ),
-            0
-        ) AS normvotes
-    FROM
-        scores s
-)
-SELECT
-    n.bookid AS bookid,
-    ROW_NUMBER() OVER (
-        ORDER BY
-            n.normscore * n.normvotes DESC
-    ) AS rank,
-    n.normscore * n.normvotes AS compscore,
-    now() AS createts
-FROM
-    normalized n;
-
 CREATE TABLE IF NOT EXISTS WeeklyTop (
     bookid UInt32,
     rank UInt32,
@@ -354,61 +276,6 @@ CREATE TABLE IF NOT EXISTS WeeklyTop (
 ) ENGINE = ReplacingMergeTree(createts)
 ORDER BY
     (bookid);
-
-CREATE MATERIALIZED VIEW IF NOT EXISTS WeeklyTop_MV REFRESH EVERY 10 minutes REPLACE WeeklyTop AS WITH weekscores AS (
-    SELECT
-        b.id AS bookid,
-        AVG(s.score) AS score,
-        COUNT(s.score) AS votes
-    FROM
-        Book b
-        LEFT JOIN Score s ON b.id = s.bookid
-    WHERE
-        s.score > 0
-        AND s.createts >= NOW() - INTERVAL '7' DAY
-    GROUP BY
-        b.id
-),
-normalized AS (
-    SELECT
-        s.bookid,
-        COALESCE(
-            s.score / NULLIF(
-                (
-                    SELECT
-                        MAX(s.score) AS score
-                    FROM
-                        weekscores s
-                ),
-                0
-            ),
-            0
-        ) AS normscore,
-        COALESCE(
-            s.votes :: FLOAT / NULLIF(
-                (
-                    SELECT
-                        MAX(s.votes) AS votes
-                    FROM
-                        weekscores s
-                ),
-                0
-            ),
-            0
-        ) AS normvotes
-    FROM
-        weekscores s
-)
-SELECT
-    n.bookid AS bookid,
-    ROW_NUMBER() OVER (
-        ORDER BY
-            n.normscore * n.normvotes DESC
-    ) AS rank,
-    n.normscore * n.normvotes AS compscore,
-    now() AS createts
-FROM
-    normalized n;
 
 CREATE TABLE IF NOT EXISTS Recommendations (
     userid UInt32,
@@ -419,30 +286,3 @@ CREATE TABLE IF NOT EXISTS Recommendations (
 ) ENGINE = ReplacingMergeTree(createts)
 ORDER BY
     (userid, bookid);
-
-CREATE MATERIALIZED VIEW IF NOT EXISTS Recommendations_MV REFRESH EVERY 10 minutes REPLACE Recommendations AS
-SELECT
-    pp.userid,
-    pp.bookid,
-    ROW_NUMBER() OVER (
-        PARTITION BY pp.userid
-        ORDER BY
-            COALESCE(pp.compatibility, 0) + COALESCE(t.compscore, 0) DESC
-    ) AS rank,
-    (
-        COALESCE(pp.compatibility, 0) + COALESCE(t.compscore, 0)
-    ) AS compatibility,
-    now() AS createts
-FROM
-    PersonalPart pp
-    INNER JOIN Top t ON t.bookid = pp.bookid
-WHERE
-    (pp.userid, pp.bookid) NOT IN (
-        SELECT
-            userid,
-            bookid
-        FROM
-            BookStatus
-        WHERE
-            status = 'completed'
-    );
