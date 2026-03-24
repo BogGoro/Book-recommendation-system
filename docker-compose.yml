@@ -86,6 +86,7 @@ services:
   
   # Airflow's dedicated database
   airflow-db:
+    container_name: airflow-db
     image: postgres:13
     env_file: .env
     environment:
@@ -178,10 +179,47 @@ services:
       airflow scheduler
       "
 
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    expose:
+      - "9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - backend_network
+      - airflow_network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - backend_network
+      - airflow_network
+    restart: unless-stopped
+
 volumes:
   airflow_db_data:
   postgres_data:
   clickhouse_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   backend_network:

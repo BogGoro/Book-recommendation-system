@@ -1,7 +1,8 @@
 import uvicorn
 import fastapi
+from fastapi.responses import Response
 
-
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from starlette.staticfiles import StaticFiles
 
 from src.routers.main import router
@@ -25,6 +26,7 @@ app.middleware("http")(
     middlewares.make_authorization_middleware(["/personal", "/set_status"])
 )
 app.middleware("http")(middlewares.refresh)
+app.add_middleware(middlewares.MetricsMiddleware)
 
 # include routers
 app.include_router(router, tags=["Main"])
@@ -59,6 +61,11 @@ app.mount("/img", StaticFiles(directory="src/frontend/img"), name="img")
 )
 def root():
     return {"message": "Healthy"}
+
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 def start():
