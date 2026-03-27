@@ -2,6 +2,18 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
   - job_name: 'books-recommendation-system'
     static_configs:
       - targets: ['backend:8000']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  - job_name: 'airflow-db'
+    static_configs:
+      - targets: ['airflow-db-exporter:9187']
