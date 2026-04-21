@@ -1,9 +1,9 @@
 import time
 from typing import List
+
 from fastapi import Request, Response
 from fastapi.responses import RedirectResponse
-from jose import jwt, JWTError
-from keycloak import KeycloakOpenID
+from jose import JWTError, jwt
 
 from src.scripts import auth
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,7 +21,7 @@ async def refresh(request: Request, call_next):
     try:
         access_token = request.cookies.get("access")
         refresh_token = request.cookies.get("refresh")
-    except:
+    except Exception:
         return await call_next(request)
     request.state.access_token = access_token
     request.state.refresh_token = refresh_token
@@ -44,17 +44,14 @@ async def refresh(request: Request, call_next):
 
     if now >= exp:
         try:
-            new_tokens = auth.keycloak_openid.refresh_token(refresh_token)
-        except:
+            new_access, new_refresh = auth.refresh_tokens(refresh_token)
+        except (ValueError, JWTError):
             request.state.access_token = None
             request.state.refresh_token = None
             response: Response = await call_next(request)
             response.delete_cookie("access")
             response.delete_cookie("refresh")
             return response
-
-        new_access = new_tokens["access_token"]
-        new_refresh = new_tokens["refresh_token"]
 
         request.state.access_token = new_access
         request.state.refresh_token = new_refresh

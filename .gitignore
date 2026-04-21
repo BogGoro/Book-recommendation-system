@@ -1,6 +1,7 @@
 .env
 __pycache__
 venv
+.venv
 .DS_Store
 lldap_*
 *.log
