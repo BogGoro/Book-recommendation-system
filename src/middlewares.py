@@ -6,6 +6,15 @@ from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
 
 from src.scripts import auth
+from starlette.middleware.base import BaseHTTPMiddleware
+from prometheus_client import Counter
+
+
+REQUEST_COUNT = Counter(
+    "http_requests_total",
+    "Total number of HTTP requests",
+    ["app_name", "method", "endpoint", "http_status"]
+)
 
 
 async def refresh(request: Request, call_next):
@@ -66,3 +75,22 @@ def make_authorization_middleware(restricted_routes: List[str]):
         return await call_next(request)
 
     return authorize
+
+
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+        except Exception:
+            status_code = 500
+            raise
+        finally:
+            REQUEST_COUNT.labels(
+                app_name="books-recommendation-system",
+                method=request.method,
+                endpoint=request.url.path,
+                http_status=str(status_code)
+            ).inc()
+
+        return response
