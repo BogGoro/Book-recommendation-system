@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: airflow-web
-  namespace: book-project
+  namespace: team-4-ns
 spec:
   replicas: 1
   selector:

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: airflow-db
-  namespace: book-project
+  namespace: team-4-ns
 spec:
   serviceName: airflow-db
   replicas: 1

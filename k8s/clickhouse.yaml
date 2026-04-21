@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: clickhouse
-  namespace: book-project
+  namespace: team-4-ns
 spec:
   serviceName: clickhouse
   replicas: 1

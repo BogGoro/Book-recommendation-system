@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: airflow-init
-  namespace: book-project
+  namespace: team-4-ns
 spec:
   backoffLimit: 5
   template:
