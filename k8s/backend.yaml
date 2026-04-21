@@ -15,11 +15,22 @@ spec:
     spec:
       containers:
         - name: backend
-          image: YOUR_DOCKERHUB/backend:latest
+          image: woolfer0097kek/bookrec-backend:latest
           ports:
             - containerPort: 8000
+              name: http
           envFrom:
             - secretRef:
                 name: app-secrets
             - configMapRef:
                 name: app-config
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15

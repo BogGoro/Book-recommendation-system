@@ -15,8 +15,38 @@ spec:
     spec:
       containers:
         - name: scheduler
-          image: YOUR_DOCKERHUB/airflow:latest
+          image: woolfer0097kek/bookrec-airflow-scheduler:latest
           command: ["airflow", "scheduler"]
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AIRFLOW_EXECUTOR
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_FERNET_KEY
+            - name: AIRFLOW__WEBSERVER__SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_SECRET_KEY
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW__CORE__SQL_ALCHEMY_CONN
           envFrom:
             - secretRef:
                 name: app-secrets
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - airflow jobs check --job-type SchedulerJob --hostname "$(hostname)"
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 30

@@ -15,10 +15,44 @@ spec:
     spec:
       containers:
         - name: web
-          image: YOUR_DOCKERHUB/airflow:latest
+          image: woolfer0097kek/bookrec-airflow-webserver:latest
           command: ["airflow", "webserver"]
           ports:
             - containerPort: 8080
+              name: http
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AIRFLOW_EXECUTOR
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_FERNET_KEY
+            - name: AIRFLOW__WEBSERVER__SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_SECRET_KEY
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW__CORE__SQL_ALCHEMY_CONN
           envFrom:
             - secretRef:
                 name: app-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30

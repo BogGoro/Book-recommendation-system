@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter
+  namespace: book-project
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-exporter
+  template:
+    metadata:
+      labels:
+        app: postgres-exporter
+    spec:
+      containers:
+        - name: exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:latest
+          ports:
+            - containerPort: 9187
+              name: metrics
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_EXPORTER_DSN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter
+  namespace: book-project
+spec:
+  selector:
+    app: postgres-exporter
+  ports:
+    - port: 9187
+      targetPort: 9187
+      name: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-db-exporter
+  namespace: book-project
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-db-exporter
+  template:
+    metadata:
+      labels:
+        app: airflow-db-exporter
+    spec:
+      containers:
+        - name: exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:latest
+          ports:
+            - containerPort: 9187
+              name: metrics
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_DB_EXPORTER_DSN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-db-exporter
+  namespace: book-project
+spec:
+  selector:
+    app: airflow-db-exporter
+  ports:
+    - port: 9187
+      targetPort: 9187
+      name: metrics
