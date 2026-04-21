@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  namespace: book-project
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-scheduler
+  template:
+    metadata:
+      labels:
+        app: airflow-scheduler
+    spec:
+      containers:
+        - name: scheduler
+          image: YOUR_DOCKERHUB/airflow:latest
+          command: ["airflow", "scheduler"]
+          envFrom:
+            - secretRef:
+                name: app-secrets

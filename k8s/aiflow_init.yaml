@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: airflow-init
+  namespace: book-project
+spec:
+  template:
+    spec:
+      containers:
+        - name: airflow-init
+          image: YOUR_DOCKERHUB/airflow:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              airflow db init &&
+              airflow users create \
+              -u admin -p admin \
+              -f admin -l admin \
+              -r Admin -e admin@example.com
+          envFrom:
+            - secretRef:
+                name: app-secrets
+      restartPolicy: OnFailure
