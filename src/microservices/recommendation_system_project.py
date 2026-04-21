@@ -1,3 +1,5 @@
+import os
+
 import uvicorn
 import fastapi
 from fastapi.responses import Response
@@ -12,7 +14,7 @@ from src import middlewares
 # fastapi application
 app = fastapi.FastAPI( title="Reccomendation System backend API",
     description="This is an API for our Books recommendation system for capstone project in Innopolis University.\n \
-          In our stack we use FastAPI+HTML+CSS+JS+Jinja2 for backend&frontend, Keycloak+Lldap for authentication, Airflow+ClickHouse for data processing and PostgreSQL for data storing. ",
+          In our stack we use FastAPI+HTML+CSS+JS+Jinja2 for backend&frontend, JWT authentication backed by PostgreSQL, Airflow+ClickHouse for data processing and PostgreSQL for data storing. ",
     contact={
         "Github": "https://github.com/IU-Capstone-Project-2025/Recommendation-System"
     },
@@ -38,18 +40,6 @@ app.mount("/js", StaticFiles(directory="src/frontend/js"), name="js")
 app.mount("/img", StaticFiles(directory="src/frontend/img"), name="img")
 
 
-# search_engine = None
-
-# @app.on_event("startup")
-# async def startup_event():
-#     """Initialize the search engine when the application starts."""
-#     global search_engine
-#     from src.scripts.searching_mechanism.vector_searching import BookSearchEngine
-#     engine = BookSearchEngine()
-#     engine.load_books("src/scripts/searching_mechanism/titles_only.csv")
-#     search_engine = engine
-
-
 @app.get("/api/healthchecker",
  description="This is a health checker handler for our application.\
      We use it to check if our application is up and running during deployment.",
@@ -69,11 +59,12 @@ def metrics():
 
 
 def start():
+    reload = os.environ.get("UVICORN_RELOAD", "0").strip() in ("1", "true", "yes")
     uvicorn.run(
         "src.microservices.recommendation_system_project:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=reload,
         timeout_graceful_shutdown=10000000,
     )
 
