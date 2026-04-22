@@ -19,6 +19,15 @@ spec:
         fsGroup: 472
         runAsNonRoot: true
         runAsUser: 472
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+          securityContext:
+            runAsUser: 0
       containers:
         - name: grafana
           image: grafana/grafana:latest
@@ -36,6 +45,13 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: GRAFANA_ADMIN_PASSWORD
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "200m"
+              memory: "512Mi"
           readinessProbe:
             httpGet:
               path: /api/health
@@ -48,13 +64,6 @@ spec:
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 30
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 200m
-              memory: 512Mi
           volumeMounts:
             - name: data
               mountPath: /var/lib/grafana
@@ -66,7 +75,8 @@ spec:
               readOnly: true
       volumes:
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: grafana-data
         - name: grafana-datasources
           configMap:
             name: grafana-datasources
