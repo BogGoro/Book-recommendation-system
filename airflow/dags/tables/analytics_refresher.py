@@ -28,14 +28,10 @@ class AnalyticsRefresher:
         """Step 1: Create temporary tables from existing ones."""
         self.log.info("Creating temporary tables...")
 
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS PersonalPart_new AS PersonalPart;
-            CREATE TABLE IF NOT EXISTS Top_new AS Top;
-            CREATE TABLE IF NOT EXISTS WeeklyTop_new AS WeeklyTop;
-            CREATE TABLE IF NOT EXISTS Recommendations_new AS Recommendations;
-        """
-        )
+        conn.execute("CREATE TABLE IF NOT EXISTS PersonalPart_new AS PersonalPart")
+        conn.execute("CREATE TABLE IF NOT EXISTS Top_new AS Top")
+        conn.execute("CREATE TABLE IF NOT EXISTS WeeklyTop_new AS WeeklyTop")
+        conn.execute("CREATE TABLE IF NOT EXISTS Recommendations_new AS Recommendations")
         self.log.info("Temporary tables created successfully")
 
     def populate_personal_part(self, conn) -> int:
@@ -190,6 +186,11 @@ class AnalyticsRefresher:
     def atomic_swap(self, conn) -> None:
         """Step 3: Atomic swap of tables using RENAME."""
         self.log.info("Performing atomic swap...")
+        
+        conn.execute("DROP TABLE IF EXISTS PersonalPart_old")
+        conn.execute("DROP TABLE IF EXISTS Top_old")
+        conn.execute("DROP TABLE IF EXISTS WeeklyTop_old")
+        conn.execute("DROP TABLE IF EXISTS Recommendations_old")
 
         conn.execute(
             """
@@ -210,12 +211,8 @@ class AnalyticsRefresher:
         """Step 4: Clean up old tables."""
         self.log.info("Cleaning up old tables...")
 
-        conn.execute(
-            """
-            DROP TABLE IF EXISTS PersonalPart_old;
-            DROP TABLE IF EXISTS Top_old;
-            DROP TABLE IF EXISTS WeeklyTop_old;
-            DROP TABLE IF EXISTS Recommendations_old;
-        """
-        )
+        conn.execute("DROP TABLE IF EXISTS PersonalPart_old")
+        conn.execute("DROP TABLE IF EXISTS Top_old")
+        conn.execute("DROP TABLE IF EXISTS WeeklyTop_old")
+        conn.execute("DROP TABLE IF EXISTS Recommendations_old")
         self.log.info("Cleanup completed")

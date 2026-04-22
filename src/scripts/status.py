@@ -36,7 +36,7 @@ class Status:
             cur.execute(
                 """
                     SELECT status
-                    FROM status
+                    FROM bookstatus
                     WHERE userid = %(userid)s AND bookid = %(bookid)s
                 """,
                 {"userid": self.userid, "bookid": self.bookId},
