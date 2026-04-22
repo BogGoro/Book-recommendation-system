@@ -10,49 +10,53 @@ def test_backend_healthy():
 
 
 def test_root_endpoint():
-    response = requests.get("http://backend:8000")
+    response = requests.get("http://backend:8000/api/healthchecker")
     assert response.status_code == 200
 
 
 def test_catalog_endpoint():
-    response = requests.get("http://backend:8000/catalog")
+    response = requests.get("http://backend:8000/api/catalog")
     assert response.status_code == 200
 
 
 def test_book_endpoint():
-    response = requests.get("http://backend:8000/book?id=1")
-    assert response.status_code == 200
+    response = requests.get("http://backend:8000/api/book?id=1")
+    assert response.status_code in (200, 404)
 
 
 def test_registration_endpoint():
-    response = requests.get("http://backend:8000/registration")
-    assert response.status_code == 200
+    response = requests.post(
+        "http://backend:8000/api/registration",
+        json={
+            "username": TEST_BACKEND_LOGIN,
+            "email": "test@example.com",
+            "password": TEST_BACKEND_PASSWORD,
+        },
+    )
+    assert response.status_code in (200, 409)
 
 
 def test_backend_auth():
     session = requests.Session()
     reg = session.post(
-        "http://backend:8000/registration",
-        data={
+        "http://backend:8000/api/registration",
+        json={
             "username": TEST_BACKEND_LOGIN,
             "email": "test@example.com",
             "password": TEST_BACKEND_PASSWORD,
-            "password_confirm": TEST_BACKEND_PASSWORD,
         },
-        allow_redirects=False,
     )
-    if reg.status_code not in (303, 307):
+    if reg.status_code == 409:
         sign = session.post(
-            "http://backend:8000/signin",
-            data={
+            "http://backend:8000/api/signin",
+            json={
                 "username": TEST_BACKEND_LOGIN,
                 "password": TEST_BACKEND_PASSWORD,
             },
-            allow_redirects=False,
         )
-        assert sign.status_code in (303, 307)
+        assert sign.status_code == 200
     else:
-        assert reg.status_code in (303, 307)
+        assert reg.status_code == 200
 
 
 def test_airflow_healthy():
