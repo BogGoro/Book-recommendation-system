@@ -7,15 +7,15 @@ data:
   AIRFLOW_EXECUTOR: LocalExecutor
 
   POSTGRES_DB: backend
-  POSTGRES_HOST: postgres
+  POSTGRES_HOST: postgres.team-4-ns.svc.cluster.local
   POSTGRES_PORT: "5432"
 
   AIRFLOW_DB_NAME: airflow
-  AIRFLOW_DB_HOST: airflow-db
+  AIRFLOW_DB_HOST: airflow-db.team-4-ns.svc.cluster.local
   AIRFLOW_DB_PORT: "5432"
 
   CLICKHOUSE_DB: default
-  CLICKHOUSE_HOST: clickhouse
+  CLICKHOUSE_HOST: clickhouse.team-4-ns.svc.cluster.local
   CLICKHOUSE_PORT: "8123"
   CLICKHOUSE_NATIVE_PORT: "9000"
 

@@ -38,6 +38,13 @@ spec:
                   key: POSTGRES_DB
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "backend", "-d", "backend"]
