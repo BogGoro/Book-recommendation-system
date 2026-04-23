@@ -187,6 +187,18 @@ class AnalyticsRefresher:
         """Step 3: Atomic swap of tables using RENAME."""
         self.log.info("Performing atomic swap...")
         
+        # Check if temp tables exist before swapping
+        result = conn.execute("""
+            SELECT count() 
+            FROM system.tables 
+            WHERE database = currentDatabase() 
+            AND name IN ('PersonalPart_new', 'Top_new', 'WeeklyTop_new', 'Recommendations_new')
+        """)
+        
+        if result[0][0] < 4:
+            self.log.error("Temporary tables don't exist! Cannot perform atomic swap.")
+            raise Exception("Temporary tables missing. Ensure create_temp_tables and populate steps completed successfully.")
+        
         conn.execute("DROP TABLE IF EXISTS PersonalPart_old")
         conn.execute("DROP TABLE IF EXISTS Top_old")
         conn.execute("DROP TABLE IF EXISTS WeeklyTop_old")
