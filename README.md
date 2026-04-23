@@ -74,7 +74,7 @@ Coverage snapshot (external course repo):
 
 | Member              | Role        |
 |---------------------|-------------|
-| Denis Troegubov     | Data analytics |
+| Denis Troegubov     | Data engineer |
 | Danila Kochegarov   | Backend     |
 | Peter Zavadskii     | SRE         |
 | Daniil Tskhe        | Backend     |
