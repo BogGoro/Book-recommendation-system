@@ -3,6 +3,8 @@
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-blue)](https://docs.docker.com/compose/)
 [![FastAPI](https://img.shields.io/badge/Framework-FastAPI-green)](https://fastapi.tiangolo.com/)
 
+The service helps you find books based on your interests: personalized recommendations, "read / reading / want to read" lists, ratings, weekly trends, and top lists. It offers registration and login features so you can track your progress and receive personalized recommendations.
+
 ## Features
 
 - Personalized book recommendations
