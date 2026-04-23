@@ -1,7 +1,10 @@
+import os
+
 import uvicorn
 import fastapi
+from fastapi.responses import Response
 
-
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from starlette.staticfiles import StaticFiles
 
 from src.routers.main import router
@@ -11,7 +14,7 @@ from src import middlewares
 # fastapi application
 app = fastapi.FastAPI( title="Reccomendation System backend API",
     description="This is an API for our Books recommendation system for capstone project in Innopolis University.\n \
-          In our stack we use FastAPI+HTML+CSS+JS+Jinja2 for backend&frontend, Keycloak+Lldap for authentication, Airflow+ClickHouse for data processing and PostgreSQL for data storing. ",
+          In our stack we use FastAPI+HTML+CSS+JS+Jinja2 for backend&frontend, JWT authentication backed by PostgreSQL, Airflow+ClickHouse for data processing and PostgreSQL for data storing. ",
     contact={
         "Github": "https://github.com/IU-Capstone-Project-2025/Recommendation-System"
     },
@@ -25,6 +28,7 @@ app.middleware("http")(
     middlewares.make_authorization_middleware(["/personal", "/set_status"])
 )
 app.middleware("http")(middlewares.refresh)
+app.add_middleware(middlewares.MetricsMiddleware)
 
 # include routers
 app.include_router(router, tags=["Main"])
@@ -34,18 +38,6 @@ app.include_router(score_router, tags=["Score"])
 app.mount("/css", StaticFiles(directory="src/frontend/css"), name="css")
 app.mount("/js", StaticFiles(directory="src/frontend/js"), name="js")
 app.mount("/img", StaticFiles(directory="src/frontend/img"), name="img")
-
-
-# search_engine = None
-
-# @app.on_event("startup")
-# async def startup_event():
-#     """Initialize the search engine when the application starts."""
-#     global search_engine
-#     from src.scripts.searching_mechanism.vector_searching import BookSearchEngine
-#     engine = BookSearchEngine()
-#     engine.load_books("src/scripts/searching_mechanism/titles_only.csv")
-#     search_engine = engine
 
 
 @app.get("/api/healthchecker",
@@ -61,12 +53,18 @@ def root():
     return {"message": "Healthy"}
 
 
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 def start():
+    reload = os.environ.get("UVICORN_RELOAD", "0").strip() in ("1", "true", "yes")
     uvicorn.run(
         "src.microservices.recommendation_system_project:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=reload,
         timeout_graceful_shutdown=10000000,
     )
 

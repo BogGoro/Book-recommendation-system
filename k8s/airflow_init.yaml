@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: airflow-init
+  namespace: team-4-ns
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-db
+          image: postgres:13
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h airflow-db -p 5432 -U "$AIRFLOW_DB_USER"; do
+                echo "waiting for airflow-db..."; sleep 2;
+              done
+          env:
+            - name: AIRFLOW_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_DB_USER
+      containers:
+        - name: airflow-init
+          image: woolfer0097kek/bookrec-airflow-webserver:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              airflow db init
+              airflow users create \
+                -u "$AIRFLOW_ADMIN_USERNAME" \
+                -p "$AIRFLOW_ADMIN_PASSWORD" \
+                -f "$AIRFLOW_ADMIN_FIRSTNAME" \
+                -l "$AIRFLOW_ADMIN_LASTNAME" \
+                -r Admin \
+                -e "$AIRFLOW_ADMIN_EMAIL" || true
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AIRFLOW_EXECUTOR
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_FERNET_KEY
+            - name: AIRFLOW__WEBSERVER__SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW_SECRET_KEY
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+          envFrom:
+            - secretRef:
+                name: app-secrets

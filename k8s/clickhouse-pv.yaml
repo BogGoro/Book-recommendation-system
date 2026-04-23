@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: clickhouse-pv
+  labels:
+    app: clickhouse
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /tmp/clickhouse-data
+  persistentVolumeReclaimPolicy: Retain

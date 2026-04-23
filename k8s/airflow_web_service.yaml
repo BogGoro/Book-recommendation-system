@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-web
+  namespace: team-4-ns
+spec:
+  selector:
+    app: airflow-web
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http

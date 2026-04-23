@@ -27,9 +27,16 @@ services:
       dockerfile: backend.Dockerfile
     ports:
       - "${BACKEND_PORT}:8000"
+    environment:
+      SEARCH_LEVENSHTEIN_DIR: /app/search_bundle
+      UVICORN_RELOAD: ${UVICORN_RELOAD:-0}
+    volumes:
+      - ./src:/app/src
     depends_on:
-      - postgres
-      - clickhouse
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_started
     networks:
       - backend_network
 
@@ -47,45 +54,9 @@ services:
       - backend_network
       - airflow_network
 
-#   # Keycloak
-#   keycloak:
-#     image: quay.io/keycloak/keycloak:latest
-#     restart: always
-#     ports:
-#       - "${KEYCLOAK_PORT}:8080"
-#       - "${KEYCLOAK_HTTPS_PORT}:8443"
-#       - "${KEYCLOAK_HEALTH_CHECK_PORT}:9000"
-
-#     environment:
-#       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_USER}
-#       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_PASSWORD}
-#     command: start-dev
-#     networks:
-#       - backend_network
-
-
-
-#  #Lldap 
-#   lldap:
-#     image: lldap/lldap:stable
-#     container_name: lldap
-#     restart: unless-stopped
-#     ports:
-#       - "${LLDAP_HTTPS_CONN}:3890"
-#       - "${LLDAP_WEB_UI}:17170"
-#     volumes:
-#       - ./lldap_data:/data
-#       - ./lldap_config:/config
-#     environment:
-#       LLDAP_JWT_SECRET: ${LLDAP_JWT_SECRET}
-#       LLDAP_LDAP_USER_PASS: ${LLDAP_LDAP_USER_PASS}
-#       LLDAP_LDAP_BASE_DN: ${LLDAP_LDAP_BASE_DN}
-#       LLDAP_LDAP_USER_DN: ${LLDAP_LDAP_USER_DN}
-#     networks:
-#       - backend_network
-  
   # Airflow's dedicated database
   airflow-db:
+    container_name: airflow-db
     image: postgres:13
     env_file: .env
     environment:
@@ -178,10 +149,69 @@ services:
       airflow scheduler
       "
 
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    expose:
+      - "9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - backend_network
+      - airflow_network
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DSN}
+    depends_on:
+      - postgres
+    networks:
+      - backend_network
+    restart: unless-stopped
+
+  airflow-db-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter
+    container_name: airflow-db-exporter
+    environment:
+      DATA_SOURCE_NAME: ${AIRFLOW_DB_EXPORTER_DSN}
+    depends_on:
+      - airflow-db
+    networks:
+      - airflow_network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - backend_network
+      - airflow_network
+    restart: unless-stopped
+
 volumes:
   airflow_db_data:
   postgres_data:
   clickhouse_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   backend_network:

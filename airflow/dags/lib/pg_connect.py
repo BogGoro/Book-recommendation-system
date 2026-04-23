@@ -46,7 +46,6 @@ class PgConnect:
             dbname={db_name}
             user={user}
             password={pw}
-            target_session_attrs=read-write
             sslmode={sslmode}
         """.format(
             host=self.host,

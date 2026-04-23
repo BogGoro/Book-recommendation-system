@@ -32,7 +32,7 @@ class BookMessages:
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
-                    SELECT COUNT(*) FROM message WHERE bookid = %(bookid)s AND m.status <> 'deleted'
+                    SELECT COUNT(*) FROM message m WHERE bookid = %(bookid)s AND m.status <> 'deleted'
                 """,
                 {"bookid": self.book_id},
             )

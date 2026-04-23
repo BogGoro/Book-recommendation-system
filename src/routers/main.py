@@ -1,9 +1,9 @@
+import os
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.encoders import jsonable_encoder
-
 
 from src.scripts import auth
 from src.scripts.book import Book
@@ -197,16 +197,17 @@ async def search(request: Request, search_string: str = Form(...)):
 
     import subprocess
 
+    levenshtein_cwd = os.environ.get(
+        "SEARCH_LEVENSHTEIN_DIR", "src/scripts/searching_mechanism"
+    )
     result = subprocess.Popen(
         ["./levenshtein_length"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        cwd="src/scripts/searching_mechanism",
+        cwd=levenshtein_cwd,
     )
-    # from src.microservices.recommendation_system_project import search_engine
-    # cleaned_lines = search_engine.search(search_string)
     output_data, stderr_data = result.communicate(input=search_string + "\n")
     output_lines = output_data.splitlines()
 
