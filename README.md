@@ -32,8 +32,8 @@ Default host ports match `.env.example`. Override them in `.env` if needed.
 
 | Environment | Service              | Endpoint                         | Default credentials   |
 |-------------|----------------------|----------------------------------|------------------------|
-| Local       | Web UI (frontend)    | http://localhost:5173            | —                      |
-| Local       | Backend API          | http://localhost:8000            | —                      |
+| Local       | Web UI (Nginx + React) | http://localhost:80            | —                      |
+| Local       | Backend API (direct) | http://localhost:8000            | —                      |
 | Local       | Airflow UI           | http://localhost:8080            | `admin` / `admin`      |
 | Local       | Grafana              | http://localhost:3000            | `admin` / `admin`      |
 | Local       | Prometheus           | http://localhost:9090            | —                      |
