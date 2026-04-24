@@ -40,6 +40,13 @@ spec:
                   key: CLICKHOUSE_DB
             - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
               value: "1"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "200m"
+              memory: "512Mi"
           readinessProbe:
             httpGet:
               path: /ping

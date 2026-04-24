@@ -15,15 +15,30 @@ data:
 
       - job_name: 'books-recommendation-system'
         static_configs:
-          - targets: ['backend:8000']
+          - targets: ['backend.team-4-ns.svc.cluster.local:8000']
 
       - job_name: 'postgres'
         static_configs:
-          - targets: ['postgres-exporter:9187']
+          - targets: ['postgres-exporter.team-4-ns.svc.cluster.local:9187']
 
       - job_name: 'airflow-db'
         static_configs:
-          - targets: ['airflow-db-exporter:9187']
+          - targets: ['airflow-db-exporter.team-4-ns.svc.cluster.local:9187']
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prometheus-pv
+  labels:
+    app: prometheus
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /tmp/prometheus-data
+  persistentVolumeReclaimPolicy: Retain
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -35,6 +50,9 @@ spec:
   resources:
     requests:
       storage: 5Gi
+  selector:
+    matchLabels:
+      app: prometheus
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,15 +69,27 @@ spec:
       labels:
         app: prometheus
     spec:
+      securityContext:
+        fsGroup: 2000
+        runAsUser: 2000
+        runAsNonRoot: true
       containers:
         - name: prometheus
           image: prom/prometheus:latest
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=15d
           ports:
             - containerPort: 9090
               name: http
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "200m"
+              memory: "512Mi"
           readinessProbe:
             httpGet:
               path: /-/ready
@@ -97,3 +127,4 @@ spec:
     - port: 9090
       targetPort: 9090
       name: http
+  type: ClusterIP

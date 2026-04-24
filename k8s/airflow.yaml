@@ -38,6 +38,13 @@ spec:
                   key: AIRFLOW_DB_NAME
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "1Gi"
+            limits:
+              cpu: "200m"
+              memory: "2Gi"
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "airflow", "-d", "airflow"]

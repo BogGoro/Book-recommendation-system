@@ -24,6 +24,13 @@ spec:
                 name: app-secrets
             - configMapRef:
                 name: app-config
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "100m"
+              memory: "256Mi"
           readinessProbe:
             tcpSocket:
               port: 8000
