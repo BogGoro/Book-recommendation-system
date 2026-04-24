@@ -2,6 +2,8 @@
 
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-blue)](https://docs.docker.com/compose/)
 [![FastAPI](https://img.shields.io/badge/Framework-FastAPI-green)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/Frontend-React%2019-61DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6)](https://www.typescriptlang.org/)
 
 The service helps you find books based on your interests: personalized recommendations, "read / reading / want to read" lists, ratings, weekly trends, and top lists. It offers registration and login features so you can track your progress and receive personalized recommendations.
 
@@ -32,7 +34,8 @@ Default host ports match `.env.example`. Override them in `.env` if needed.
 
 | Environment | Service              | Endpoint                         | Default credentials   |
 |-------------|----------------------|----------------------------------|------------------------|
-| Local       | Web UI (backend)     | http://localhost:8000            | —                      |
+| Local       | Web UI (Nginx + React) | http://localhost:80            | —                      |
+| Local       | Backend API (direct) | http://localhost:8000            | —                      |
 | Local       | Airflow UI           | http://localhost:8080            | `admin` / `admin`      |
 | Local       | Grafana              | http://localhost:3000            | `admin` / `admin`      |
 | Local       | Prometheus           | http://localhost:9090            | —                      |
@@ -49,7 +52,7 @@ Default host ports match `.env.example`. Override them in `.env` if needed.
 | Runtime           | Python 3.13 |
 | Dependencies      | Poetry (`pyproject.toml`) |
 | Backend           | FastAPI, Uvicorn |
-| Frontend          | Jinja2, HTML, CSS, JavaScript |
+| Frontend          | React 19, TypeScript, React Router v7, Axios, Vite |
 | Auth              | JWT (python-jose), bcrypt, PostgreSQL |
 | ETL / orchestration | Apache Airflow |
 | Transactional DB  | PostgreSQL |

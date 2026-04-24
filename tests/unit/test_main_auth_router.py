@@ -21,7 +21,7 @@ def test_signin_bad_credentials(monkeypatch):
     monkeypatch.setattr(main.auth, "authenticate", bad_auth)
 
     r = client.post("/signin", data={"username": "Denis", "password": "wrong"})
-    assert r.status_code == 200
+    assert r.status_code == 401
     assert "wrong password or username" in r.text
 
 
@@ -54,7 +54,7 @@ def test_registration_password_mismatch(monkeypatch):
             "password_confirm": "p2",
         },
     )
-    assert r.status_code == 200
+    assert r.status_code == 400
     assert "passwords don&#39;t match" in r.text or "passwords don't match" in r.text
 
 
@@ -76,7 +76,7 @@ def test_registration_username_not_unique(monkeypatch):
             "password_confirm": "pass",
         },
     )
-    assert r.status_code == 200
+    assert r.status_code == 409
     assert "already taken" in r.text
 
 

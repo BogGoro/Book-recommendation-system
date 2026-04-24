@@ -5,10 +5,10 @@ import fastapi
 from fastapi.responses import Response
 
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-from starlette.staticfiles import StaticFiles
 
 from src.routers.main import router
 from src.routers.feedback import router as score_router
+from src.routers.api import router as api_router
 from src import middlewares
 
 # fastapi application
@@ -25,19 +25,16 @@ app = fastapi.FastAPI( title="Reccomendation System backend API",
 
 # inject middlewares
 app.middleware("http")(
-    middlewares.make_authorization_middleware(["/personal", "/set_status"])
+    middlewares.make_authorization_middleware(["/personal", "/api/personal"])
 )
 app.middleware("http")(middlewares.refresh)
 app.add_middleware(middlewares.MetricsMiddleware)
 
 # include routers
 app.include_router(router, tags=["Main"])
-app.include_router(score_router, tags=["Score"])
+app.include_router(score_router, prefix="/api", tags=["Score"])
+app.include_router(api_router, tags=["API"])
 
-# mounting static data
-app.mount("/css", StaticFiles(directory="src/frontend/css"), name="css")
-app.mount("/js", StaticFiles(directory="src/frontend/js"), name="js")
-app.mount("/img", StaticFiles(directory="src/frontend/img"), name="img")
 
 
 @app.get("/api/healthchecker",
