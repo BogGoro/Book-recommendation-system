@@ -70,6 +70,8 @@ def make_authorization_middleware(restricted_routes: List[str]):
 
         for route in restricted_routes:
             if request.url.path.startswith(route) and not authorized:
+                if route.startswith("/api"):
+                    return Response(status_code=401)
                 return RedirectResponse("/signin")
 
         return await call_next(request)

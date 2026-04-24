@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libpq-dev gcc g++ build-essential python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir poetry
+RUN pip install --no-cache-dir poetry==2.1.3
 
 # Dependencies layer
 COPY pyproject.toml poetry.lock ./

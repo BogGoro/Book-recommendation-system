@@ -40,6 +40,18 @@ services:
     networks:
       - backend_network
 
+  # React frontend served via Nginx
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - backend_network
+
   # Unit tests tester
   tester:
     env_file: .env
